@@ -1,41 +1,39 @@
 #!/usr/bin/env python
 
-import rospy
-from std_msgs.msg import String
-from sensor_msgs.msg import LaserScan
-import laser_geometry.laser_geometry as lg
-
-# tarnsform point cloud
-import tf2_ros
-import tf2_py as tf2
-#from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
-
-
-# extract points from point cloud
-import sensor_msgs.point_cloud2 as pc2
-import array as arr
-
-# map reading stuff
+# general modules
 import copy
-import numpy as np
 import math
 import struct
+import numpy as np
+import array as arr
 
-# kalman filter
-from util.kalman import KalmanFilter
-
-from util.range_segmentation import range_segmentation
-from util.association import extract_feature, closest
-
-# message
-from std_msgs.msg import Header
-from datmo_pkg.msg import TrackArray, Track
-
-# get name of src
+# general ros modules
+import rospy
 import rospkg
 rospack = rospkg.RosPack()
 
+# ros message modules
+from std_msgs.msg import Header
+from std_msgs.msg import String
+from sensor_msgs.msg import LaserScan
+import sensor_msgs.point_cloud2 as pc2
+from datmo_pkg.msg import TrackArray, Track
 
+# ros processing modules
+import laser_geometry.laser_geometry as lg
+import tf2_ros
+import tf2_py as tf2
+
+# transformation module
+import PyKDL
+
+# datmo modules
+from util.range_segmentation import range_segmentation
+from util.association import extract_feature, closest
+from util.kalman import KalmanFilter
+
+
+# Converts specified pgm map to a 2d array where [0,0] is lower left of map
 class Map:
     def __init__(self, width, height, resolution, origin, free_value, image_path, image_header):
         self.width = width
@@ -43,7 +41,7 @@ class Map:
         self.resolution = resolution
         self.origin = origin
 
-        self.obstacles = np.zeros((width, height))  # origin is -13.15, -2, resolution 0.05
+        self.obstacles = np.zeros((width, height))
         with open(image_path, 'rb') as f:
             for i in range(image_header):
                 f.readline()
@@ -60,7 +58,7 @@ class Map:
 
     # x, y in map frame; radius is pixel
     def is_obstacle(self, x, y, radius):
-        map_x = int(math.floor((x - origin[0]) / resolution)) # might wanna change to like including origin in constructor
+        map_x = int(math.floor((x - origin[0]) / resolution))
         map_y = int(math.floor((y - origin[1]) / resolution))
 
         for dx in range(-radius, radius+1):
@@ -72,7 +70,6 @@ class Map:
 
 
 # http://docs.ros.org/en/diamondback/api/tf2_geometry_msgs/html/tf2__geometry__msgs_8py_source.html
-import PyKDL
 class Transformer:
 
     # t is a tf transform
@@ -87,25 +84,27 @@ class Transformer:
         return self.frame * PyKDL.Vector(x, y, z)
 
 
+# Lidar scan processing
 def scanCallback(scan, args):
     map = args['map']
     laser_projector = args['laser_projector']
-    kalman_filters = args['kalman_filters']
     features = args['features']
+    kalman_filters = args['kalman_filters']
     publisher = args['publisher']
     tf_buffer = args['tf_buffer']
 
+    # Convert polar coordinates to cartesian coordinates
     cloud_relative = laser_projector.projectLaser(scan)
 
+    # Get transform to map frame
     try:
         tf_transform = tf_buffer.lookup_transform('map', scan.header.frame_id, scan.header.stamp, rospy.Duration(0.2))
     except (tf2.LookupException, tf2.ExtrapolationException) as ex:
         rospy.logwarn(ex)
         return
-
-    #cloud_fixed = do_transform_cloud(cloud_relative, tf_transform)
     transformer = Transformer(tf_transform)
 
+    # Filter out background
     filtered_x, filtered_y = arr.array('d', []), arr.array('d', [])
     for point in pc2.read_points(cloud_relative, skip_nans=True):
         point_global = transformer.transform(point[0], point[1], point[2])
@@ -113,14 +112,16 @@ def scanCallback(scan, args):
             filtered_x.append(point[0])
             filtered_y.append(point[1])
 
-
-    # make it global
-    #global_center = transformer.transform(np.mean(filtered_x), np.mean(filtered_y), 0)
-    #x_center, y_center = global_center[0], global_center[1]
-
+    # Extract features from laser scan in fixed coordinates
     next_segments = range_segmentation(filtered_x, filtered_y)
-    next_features = [transformer.transform(*extract_feature(next_segment), 0) for next_segment in next_segments] # GLOBAL
+    next_features = []
+    for next_segment in next_segments:
+        next_feature_x, next_feature_y = extract_feature(next_segment)
+        next_feature_fixed = transformer.transform(next_feature_x, next_feature_y, 0)
+        next_features.append([next_feature_fixed[0], next_feature_fixed[1]])
 
+    # Associate features and update/create kalman filters
+    next_kalman_filters = []
     copied_kalman_filters = [0] * len(kalman_filters)
     for next_feature in next_features:
         closest_index, closest_distance = closest(features, next_feature)
@@ -130,42 +131,33 @@ def scanCallback(scan, args):
                 kalman_filter = kalman_filters[closest_index]
             else:
                 kalman_filter = copy.deepcopy(kalman_filters[closest_index])
-            kalman_filter.update(scan.header.stamp.to_sec(), next_feature[0], next_feature[1])  # should i make it as if it didn't move? for split
+            kalman_filter.update(scan.header.stamp.to_sec(), next_feature[0], next_feature[1])
             next_kalman_filters.append(kalman_filter)
         else:
             kalman_filter = KalmanFilter(scan.header.stamp.to_sec(), next_feature[0], next_feature[1])
             next_kalman_filters.append(kalman_filter)
 
-    # if len(kalman_filters) == 0:
-    #     kalman_filters.append(KalmanFilter(scan.header.stamp.to_sec(), x_center, y_center))
-    # else:
-    #     kalman_filters[0].update(scan.header.stamp.to_sec(), x_center, y_center)
-
-    #rospy.loginfo(str(kms[0].t0))
-    #rospy.loginfo(str(kms[0].X0))
-    # can use tf transform but with empty header? also inverse for frames in pykdl
-
+    # Create tracks and publish them
     track_array_msg = TrackArray()
-
     for i in range(len(next_segments)):
         track_msg = Track()
         track_msg.header = Header()
         track_msg.header.stamp = scan.header.stamp
         track_msg.header.frame_id = 'map'
-        track_msg.x = kalman_filters[i].X0[0]
-        track_msg.y = kalman_filters[i].X0[1]
-        track_msg.dx = kalman_filters[i].X0[2]
-        track_msg.dy = kalman_filters[i].X0[3]
+        track_msg.x = next_kalman_filters[i].X0[0]
+        track_msg.y = next_kalman_filters[i].X0[1]
+        track_msg.dx = next_kalman_filters[i].X0[2]
+        track_msg.dy = next_kalman_filters[i].X0[3]
         if len(filtered_y) == 0:
             track_msg.width = 0
         else:
             track_msg.width = np.max(next_segments[i][1]) - np.min(next_segments[i][1])  # note that these are upside down
         track_array_msg.tracks.append(track_msg)
-
     publisher.publish(track_array_msg)
 
-    args['kalman_filters'] = next_kalman_filters
+    # Update tracked features/kalman filters
     args['features'] = next_features
+    args['kalman_filters'] = next_kalman_filters
 
 
 if __name__ == '__main__':
@@ -180,17 +172,16 @@ if __name__ == '__main__':
     free_value = rospy.get_param('~free_value')
     robot = rospy.get_param('~robot')
 
-    # 3netest.pgm converted to a 2d bool array where [0,0] is lower left
     map = Map(width, height, resolution, origin, free_value, rospack.get_path('datmo_pkg') + '/launch/' + image_name, image_header)
     laser_projector = lg.LaserProjection()
-    kalman_filters = []
     features = []
+    kalman_filters = []
     publisher = rospy.Publisher('datmo', TrackArray, queue_size=10)
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
     rospy.sleep(1.0)  # let listener buffer a bit
 
-    args = {'map': map, 'laser_projector': laser_projector, 'kalman_filters': kalman_filters, 'features': features, 'publisher': publisher, 'tf_buffer': tf_buffer}
+    args = {'map': map, 'laser_projector': laser_projector, 'features': features, 'kalman_filters': kalman_filters, 'publisher': publisher, 'tf_buffer': tf_buffer}
     sub = rospy.Subscriber('/'+robot+'/scan_filtered', LaserScan, scanCallback, args)
     rospy.spin()

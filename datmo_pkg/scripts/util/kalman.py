@@ -1,26 +1,22 @@
 import numpy as np
 
 # https://en.wikipedia.org/wiki/Kalman_filter
+# Kalman filter with constant velocity filter
 class KalmanFilter:
 	def __init__(self, t, x, y):
 		self.t0 = t
 		self.X0 = np.array([x, y, 0, 0]) # initial state is x, y, v_x, v_y
-		self.P0 = np.identity(4) * 1  # TODO initial covariance (think it's just identiy?)
-										# Actually 0 according to wikipedia if know perfectly? but then again we dont
-										# feel like it should be measure covariance
+		self.P0 = np.identity(4) * 1
 		self.P0[2][2] = self.P0[2][2]*10
 		self.P0[3][3] = self.P0[3][3]*10
 
 		self.H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])  # Measurement matrix
-		self.Q = np.identity(4) * .01  # TODO TUNE process error covariance(stuff like wind) should make velocity more?
+		self.Q = np.identity(4) * .01  # process error covariance
 		self.Q[2][2] = self.Q[2][2]*10
 		self.Q[3][3] = self.Q[3][3]*10
-		self.R = np.identity(2) # TODO TUNE measurement covariance make it angular?
+		self.R = np.identity(2)  # Measurement covariance
 
-
-		# add w and v as just random numbers each time?
-
-	# Set X1 and P1 to our estimate of X0 and P0 at t
+	# Return our estimate of X0 and P0 at t
 	def predict(self, t):
 		dt = t - self.t0
 		F = np.array([[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]])

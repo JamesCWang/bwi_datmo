@@ -12,6 +12,8 @@ def range_segmentation(laser_x, laser_y):
 	for i in range(1, len(laser_x)):
 		d = dist(laser_x[i-1], laser_y[i-1], laser_x[i], laser_y[i])
 		r = dist(0, 0, laser_x[i], laser_y[i])
+
+		# (0.05+0.02*r) are near perfect conditions, add 0.2
 		if d > 0.2 + (0.05 + 0.02*r):
 			segments.append([[], []])
 

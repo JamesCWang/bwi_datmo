@@ -1,4 +1,5 @@
 # https://github.com/AtsushiSakai/PythonRobotics/blob/master/Mapping/rectangle_fitting/rectangle_fitting.py
+# slight modifications to work in python 2
 """
 
 Object shape recognition with L-shape fitting
@@ -24,7 +25,8 @@ from enum import Enum
 
 show_animation = True
 
-# note that adaptive_range_segmentation expects coordinates in frame of observer
+
+# not used but note that adaptive_range_segmentation expects coordinates in frame of observer
 class LShapeFitting:
 
     class Criteria(Enum):
@@ -34,7 +36,7 @@ class LShapeFitting:
 
     def __init__(self):
         # Parameters
-        self.criteria = self.Criteria.VARIANCE
+        self.criteria = self.Criteria.CLOSENESS
         self.min_dist_of_closeness_criteria = 0.01  # [m]
         self.d_theta_deg_for_search = 1.0  # [deg]
         self.R0 = 3.0  # [m] range segmentation param
@@ -106,7 +108,7 @@ class LShapeFitting:
         for theta in np.arange(0.0, np.pi / 2.0 - d_theta, d_theta):
 
             #rot = Rot.from_euler('z', theta).as_matrix()[0:2, 0:2]
-            rot = np.array((cos(theta), -sin(theta)), (sin(theta), cos(theta)))
+            rot = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
             #c = X @ rot
             c = np.matmul(X, rot)
             c1 = c[:, 0]
