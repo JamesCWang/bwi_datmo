@@ -106,7 +106,8 @@ class LShapeFitting:
         for theta in np.arange(0.0, np.pi / 2.0 - d_theta, d_theta):
 
             rot = Rot.from_euler('z', theta).as_matrix()[0:2, 0:2]
-            c = X @ rot
+            #c = X @ rot
+            c = np.matmul(X, rot)
             c1 = c[:, 0]
             c2 = c[:, 1]
 
@@ -126,8 +127,10 @@ class LShapeFitting:
         sin_s = np.sin(min_cost[1])
         cos_s = np.cos(min_cost[1])
 
-        c1_s = X @ np.array([cos_s, sin_s]).T
-        c2_s = X @ np.array([-sin_s, cos_s]).T
+        #c1_s = X @ np.array([cos_s, sin_s]).T
+        #c2_s = X @ np.array([-sin_s, cos_s]).T
+        c1_s = np.matmul(X, np.array([cos_s, sin_s]).T)
+        c2_s = np.matmul(X, np.array([-sin_s, cos_s]).T)
 
         rect = RectangleData()
         rect.a[0] = cos_s
