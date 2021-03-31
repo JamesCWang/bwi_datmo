@@ -1,0 +1,5 @@
+<launch>
+	<node name="datmo_node" pkg="datmo_pkg" type="datmo.py">
+		<rosparam command="load" file="$(find datmo_pkg)/launch/3netest.yaml" />
+	</node>
+</launch>
