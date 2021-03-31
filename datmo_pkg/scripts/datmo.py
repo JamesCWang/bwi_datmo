@@ -125,6 +125,8 @@ def scanCallback(scan, args):
     copied_kalman_filters = [0] * len(kalman_filters)
     for next_feature in next_features:
         closest_index, closest_distance = closest(features, next_feature)
+
+        # Update an existing kalman filter if within association threshold
         if closest_distance < 0.2:
             if copied_kalman_filters[closest_index] == 0:
                 copied_kalman_filters[closest_index] = 1
