@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import itertools
 from enum import Enum
-from scipy.spatial.transform import Rotation as Rot
+#from scipy.spatial.transform import Rotation as Rot
 
 #from Mapping.rectangle_fitting.simulator \
 #    import VehicleSimulator, LidarSimulator
@@ -105,7 +105,8 @@ class LShapeFitting:
         min_cost = (-float('inf'), None)
         for theta in np.arange(0.0, np.pi / 2.0 - d_theta, d_theta):
 
-            rot = Rot.from_euler('z', theta).as_matrix()[0:2, 0:2]
+            #rot = Rot.from_euler('z', theta).as_matrix()[0:2, 0:2]
+            rot = np.array((cos(theta), -sin(theta)), (sin(theta), cos(theta)))
             #c = X @ rot
             c = np.matmul(X, rot)
             c1 = c[:, 0]
