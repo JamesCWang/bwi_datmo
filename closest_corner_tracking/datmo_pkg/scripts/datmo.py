@@ -17,7 +17,7 @@ from std_msgs.msg import Header
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 import sensor_msgs.point_cloud2 as pc2
-from datmo_pkg.msg import TrackArray, Track
+import datmo_pkg.msg
 
 # ros processing modules
 import laser_geometry.laser_geometry as lg
@@ -113,19 +113,20 @@ def scanCallback(scan, args):
             filtered_y.append(point[1])
 
     # Extract features from laser scan in fixed coordinates
-    next_segments = range_segmentation(filtered_x, filtered_y, 0, 0)
+    next_origin = [0, 0]
+    next_segments = range_segmentation(filtered_x, filtered_y, next_origin)
     # can do further processing of next_segments via min and max dot length and then check connectivity
 
     next_rects = [fit_rect(next_segment) for next_segment in next_segments]
     next_closest_corner_indexes = [get_closest_corner_index(rect, next_origin) for rect in next_rects]
-    association_count, associated_track_indexes, associated_corner_indexes = associate(laser_data[0][i], tracks, next_rects, next_closest_corner_indexes)
+    association_count, associated_track_indexes, associated_corner_indexes = associate(scan.header.stamp.to_sec(), tracks, next_rects, next_closest_corner_indexes)
 
     next_tracks = []
-    for j in range(len(next_rects)):
-        next_rect = next_rects[j]
-        next_closest_corner_index = next_closest_corner_indexes[j]
-        associated_track_index = associated_track_indexes[j]
-        associated_corner_index = associated_corner_indexes[j]
+    for i in range(len(next_rects)):
+        next_rect = next_rects[i]
+        next_closest_corner_index = next_closest_corner_indexes[i]
+        associated_track_index = associated_track_indexes[i]
+        associated_corner_index = associated_corner_indexes[i]
 
         # Update some existing track if successfully associated
         if associated_track_index != -1:
@@ -139,18 +140,18 @@ def scanCallback(scan, args):
                 associated_corner = [associated_track.rect[dim][associated_corner_index] for dim in range(2)]
                 next_track.km.X0[0] += associated_corner[0] - associated_closest_corner[0]
                 next_track.km.X0[1] += associated_corner[1] - associated_closest_corner[1]
-            next_track.update(laser_data[0][i], next_rect, next_closest_corner_index)  # should i make it as if it didn't move? for split
+            next_track.update(scan.header.stamp.to_sec(), next_rect, next_closest_corner_index)  # should i make it as if it didn't move? for split
             next_tracks.append(next_track)
 
         # Create new track if not close to any existing ones
         else:
-            next_track = Track(laser_data[0][i], next_rect, next_closest_corner_index)
+            next_track = Track(scan.header.stamp.to_sec(), next_rect, next_closest_corner_index)
             next_tracks.append(next_track)
 
     # Create tracks and publish them
-    track_array_msg = TrackArray()
+    track_array_msg = datmo_pkg.msg.TrackArray()
     for next_segment, next_track in zip(next_segments, next_tracks):
-        track_msg = Track()
+        track_msg = datmo_pkg.msg.Track()
         track_msg.header = Header()
         track_msg.header.stamp = scan.header.stamp
         track_msg.header.frame_id = 'map'
@@ -161,7 +162,7 @@ def scanCallback(scan, args):
         if len(filtered_y) == 0:
             track_msg.width = 0
         else:
-            track_msg.width = np.max(next_segments[i][1]) - np.min(next_segments[i][1])  # note that these are upside down
+            track_msg.width = np.max(next_segment[1]) - np.min(next_segment[1])  # note that these are upside down
         track_array_msg.tracks.append(track_msg)
     publisher.publish(track_array_msg)
 
@@ -184,7 +185,7 @@ if __name__ == '__main__':
     map = Map(width, height, resolution, origin, free_value, rospack.get_path('datmo_pkg') + '/launch/' + image_name, image_header)
     laser_projector = lg.LaserProjection()
     tracks = []
-    publisher = rospy.Publisher('datmo', TrackArray, queue_size=10)
+    publisher = rospy.Publisher('datmo', datmo_pkg.msg.TrackArray, queue_size=10)
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
