@@ -119,6 +119,10 @@ def scanCallback(scan, args):
 
     next_rects = [fit_rect(next_segment) for next_segment in next_segments]
     next_closest_corner_indexes = [get_closest_corner_index(rect, next_origin) for rect in next_rects]
+    for next_rect in next_rects:
+        for i in range(4):
+            corner_fixed = transformer.transform(next_rect[0][i], next_rect[1][i], 0)
+            next_rect[0][i], next_rect[1][i] = corner_fixed[0], corner_fixed[1]
     association_count, associated_track_indexes, associated_corner_indexes = associate(scan.header.stamp.to_sec(), tracks, next_rects, next_closest_corner_indexes)
 
     next_tracks = []
