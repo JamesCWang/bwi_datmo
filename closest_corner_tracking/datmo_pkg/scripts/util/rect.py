@@ -10,17 +10,17 @@ def fit_rect(segment):
 	return [rect.rect_c_x[:4], rect.rect_c_y[:4]]
 
 
-# Distance between (x1, y1) and (x2, y2)
-def dist(x1, y1, x2, y2):
-	return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+# Calculate Distance between p1 and p2
+def calc_dist(p1, p2):
+	return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
 
 
 # Get index of rectangle corner closest to a point
 def get_closest_corner_index(rect, point):
 	min_index = 0
-	min_dist = dist(rect[0][0], rect[1][0], point[0], point[1])
+	min_dist = calc_dist([rect[0][0], rect[1][0]], point)
 	for i in range(1, 4):
-		d = dist(rect[0][i], rect[1][i], point[0], point[1])
+		d = calc_dist([rect[0][i], rect[1][i]], point)
 		if d < min_dist:
 			min_dist = d
 			min_index = i
@@ -30,9 +30,9 @@ def get_closest_corner_index(rect, point):
 
 # Closeness of two rectangles via their center distance
 def rect_closeness(rect1, rect2):
-	rect1 = sum(rect1[0]) / 4, sum(rect1[1]) / 4
-	rect2 = sum(rect2[0]) / 4, sum(rect2[1]) / 4
-	return dist(rect1[0], rect1[1], rect2[0], rect2[1])
+	center1 = (rect1[0][0]+rect1[0][2])/2, (rect1[1][0]+rect1[1][2])/2
+	center2 = (rect2[0][0]+rect2[0][2])/2, (rect2[1][0]+rect2[1][2])/2
+	return calc_dist(center1, center2)
 
 
 # Get index of rectangle closest to a rectangle
