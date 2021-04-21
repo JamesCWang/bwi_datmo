@@ -1,7 +1,7 @@
 import math
 import numpy as np
 from kalman import KalmanFilter
-from rect import get_closest_corner_index
+from rect import calc_dist, get_closest_corner_index
 from scipy import stats
 
 
