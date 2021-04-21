@@ -154,19 +154,18 @@ def scanCallback(scan, args):
 
     # Create tracks and publish them
     track_array_msg = datmo_pkg.msg.TrackArray()
+    track_array_msg.header = Header()
+    track_array_msg.header.stamp = scan.header.stamp
+    track_array_msg.header.frame_id = 'map'
     for next_segment, next_track in zip(next_segments, next_tracks):
         track_msg = datmo_pkg.msg.Track()
-        track_msg.header = Header()
-        track_msg.header.stamp = scan.header.stamp
-        track_msg.header.frame_id = 'map'
-        track_msg.x = next_track.km.X0[0]
-        track_msg.y = next_track.km.X0[1]
+        track_msg.x1 = next_track.km.X0[0]
+        track_msg.y1 = next_track.km.X0[1]
+        furthest_corner_index = (next_track.closest_corner_index + 2) % 4
+        track_msg.x2 = next_track.km.X0[0] + next_track.rect[0][furthest_corner_index] - next_track.rect[0][next_track.closest_corner_index]
+        track_msg.y2 = next_track.km.X0[1] + next_track.rect[1][furthest_corner_index] - next_track.rect[1][next_track.closest_corner_index]
         track_msg.dx = next_track.km.X0[2]
         track_msg.dy = next_track.km.X0[3]
-        if len(filtered_y) == 0:
-            track_msg.width = 0
-        else:
-            track_msg.width = np.max(next_segment[1]) - np.min(next_segment[1])  # note that these are upside down
         track_array_msg.tracks.append(track_msg)
     publisher.publish(track_array_msg)
 
