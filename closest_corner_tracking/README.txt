@@ -12,5 +12,5 @@ Tunable parameters:
   - Kalman filter covariances in kalman.py
   
 Notes:
-	If there are lag issues consider lowering the rectangle fitting angular resolution or switching features from center of fitted rectangle to average of x,y coordinates. Also note that for the rectangle fitting criterions, area is relatively inaccurate and variance is the slowest.
+	The published rectangles are encoded by x, y, l, w, theta where each corner is (x+-l/2, y+-w/2) rotated counter-clockwise by theta degrees.
 	
