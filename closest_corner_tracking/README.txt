@@ -12,5 +12,5 @@ Tunable parameters:
   - Kalman filter covariances in kalman.py
   
 Notes:
-	The published rectangles are encoded by x, y, l, w, theta where each corner is (x+-l/2, y+-w/2) rotated counter-clockwise by theta degrees.
+	The published rectangles are encoded by [x, y, l, w, theta] where each corner is (x+-l/2, y+-w/2) rotated counter-clockwise by theta degrees.
 	
