@@ -24,7 +24,7 @@ class Track:
 		rect_center = np.asarray([closest_corner[dim] + furthest_corner[dim] for dim in range(2)])
 		counter_clock_corner = np.asarray([self.rect[dim][(self.closest_corner_index - 1) % 4] for dim in range(2)])
 		clock_corner = np.asarray([self.rect[dim][(self.closest_corner_index + 1) % 4] for dim in range(2)])
-		if calc_signed_angle(closest_corner - rect_center, clock_corner - rect_center):
+		if calc_signed_angle(closest_corner - rect_center, clock_corner - rect_center) > 0:
 			counter_clock_corner, clock_corner = clock_corner, counter_clock_corner
 
 		x = self.km.X0[0] + (furthest_corner[0] - closest_corner[0])/2

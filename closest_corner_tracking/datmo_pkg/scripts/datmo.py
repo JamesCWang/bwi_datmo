@@ -112,7 +112,7 @@ def scanCallback(scan, args):
             filtered_x.append(point[0])
             filtered_y.append(point[1])
 
-    # Extract features from laser scan in fixed coordinates
+    # Extract rects from laser scan in fixed coordinates
     next_origin = [0, 0]
     next_segments = range_segmentation(filtered_x, filtered_y, next_origin)
     # can do further processing of next_segments via min and max dot length and then check connectivity
