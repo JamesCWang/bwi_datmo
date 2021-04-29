@@ -8,7 +8,7 @@ Tunable parameters:
   - Segmentation distance in range_segmentation.py
   - Rectangle fitting criterion in rectangle_fitting.py
   - Rectangle fitting angular resolution in rectangle_fitting.py
-  - Association threshold in datmo.py
+  - Association threshold in association.py
   - Kalman filter covariances in kalman.py
   
 Notes:
