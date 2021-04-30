@@ -160,6 +160,7 @@ def scanCallback(scan, args):
     for next_track in next_tracks:
         x, y, l, w, theta = next_track.calc_rect_params()
         track_msg = datmo_pkg.msg.Track()
+        track_msg.id = next_track.id
         track_msg.x = x
         track_msg.y = y
         track_msg.l = l

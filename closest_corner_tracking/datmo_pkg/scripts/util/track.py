@@ -11,7 +11,11 @@ def calc_signed_angle(v1, v2):
 
 
 class Track:
+	next_id = 0
+
 	def __init__(self, t, rect, closest_corner_index):
+		self.id = Track.next_id
+		Track.next_id += 1
 		self.initial_rects = [[t], [rect]]
 		self.rect = rect
 		self.closest_corner_index = closest_corner_index
